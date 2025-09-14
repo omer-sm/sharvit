@@ -1,0 +1,4 @@
+%{
+  "beam_file": {:hex, :beam_file, "0.6.2", "efd54ec60be6a03f0a8f96f72b0353427196613289c46032d3500f0ab6c34d32", [:mix], [], "hexpm", "09a99e8e5aad674edcad7213b0d7602375dfd3c7d02f8e3136e3efae0bcc9c56"},
+  "estree": {:hex, :estree, "2.7.0", "32cb6ff05c85a93bf6c646b3b184e131f699fc1e7157d2b5be148c17f43ae566", [:mix], [], "hexpm", "bbfd859ec5ee37680572a266f8c905e78706ee75a48019b468435a4af125fbb5"},
+}

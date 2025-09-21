@@ -3,7 +3,10 @@ defmodule Sharvit.Transpiler.ControlFlow do
   alias Hologram.Compiler.IR
   alias Sharvit.Transpiler
 
-  @spec transpile_control_flow(ir :: IR.Block.t() | IR.LocalFunctionCall.t()) ::
+  @spec transpile_control_flow(
+          ir ::
+            IR.Block.t() | IR.LocalFunctionCall.t() | IR.Clause.t() | IR.Case.t() | IR.Cond.t()
+        ) ::
           ESTree.operator() | ESTree.Node.t()
   def transpile_control_flow(ir)
 
@@ -38,9 +41,51 @@ defmodule Sharvit.Transpiler.ControlFlow do
     |> wrap_in_iife()
   end
 
+  # TODO: make it match patterns
+  def transpile_control_flow(%IR.Case{condition: condition, clauses: clauses}) do
+    Builder.switch_statement(
+      Transpiler.transpile_hologram_ir!(condition),
+      Enum.map(clauses, &Transpiler.transpile_hologram_ir!/1)
+    )
+    |> wrap_in_iife()
+  end
+
+  def transpile_control_flow(%IR.Clause{match: match_pattern, body: body}) do
+    Builder.switch_case(
+      Transpiler.transpile_hologram_ir!(match_pattern),
+      transpile_expressions_and_return_last(body).body
+    )
+  end
+
+  def transpile_control_flow(%IR.Cond{clauses: clauses}) do
+    transpile_cond_clauses(clauses)
+    |> wrap_in_iife()
+  end
+
+  @spec transpile_cond_clauses(clauses :: list(IR.CondClause.t())) :: %ESTree.IfStatement{}
+  def transpile_cond_clauses(clauses)
+
+  def transpile_cond_clauses([
+        %IR.CondClause{condition: condition, body: body},
+        next_clause | rest
+      ]) do
+    clause_body = transpile_expressions_and_return_last(body)
+
+    Builder.if_statement(
+      Transpiler.transpile_hologram_ir!(condition),
+      clause_body,
+      transpile_cond_clauses([next_clause | rest])
+    )
+  end
+
+  def transpile_cond_clauses([%IR.CondClause{condition: condition, body: body}]) do
+    clause_body = transpile_expressions_and_return_last(body)
+    Builder.if_statement(Transpiler.transpile_hologram_ir!(condition), clause_body)
+  end
+
   @doc """
   Given a list of expression IRs or a single expression IR, will transpile it and
-  make the last expression a return statement.
+  make the last (/only) expression a return statement.
   Given a block IR, it will return an equivalent ESTree block with the last expression
   in the block as the return value.
   """

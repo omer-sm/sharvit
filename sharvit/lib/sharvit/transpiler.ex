@@ -7,7 +7,8 @@ defmodule Sharvit.Transpiler do
   @spec transpile_hologram_ir!(ir :: IR.t()) :: ESTree.operator() | ESTree.Node.t()
   def transpile_hologram_ir!(ir)
 
-  def transpile_hologram_ir!(%IR.Block{} = ir) do
+  def transpile_hologram_ir!(%ir_struct{} = ir)
+      when ir_struct in [IR.Block, IR.Case, IR.Clause, IR.Cond] do
     Transpiler.ControlFlow.transpile_control_flow(ir)
   end
 
@@ -33,13 +34,17 @@ defmodule Sharvit.Transpiler do
     Transpiler.Functions.transpile_function_call(ir)
   end
 
-  def transpile_hologram_ir!(%ir_struct{} = ir) when ir_struct in [IR.MapType, IR.ListType] do
+  def transpile_hologram_ir!(%ir_struct{} = ir) when ir_struct in [IR.MapType, IR.ListType, IR.TupleType] do
     Transpiler.Collectables.transpile_collectable(ir)
   end
 
   def transpile_hologram_ir!(%ir_struct{} = ir)
-      when ir_struct in [IR.AtomType, IR.StringType, IR.IntegerType, IR.FloatType] do
+      when ir_struct in [IR.AtomType, IR.StringType, IR.IntegerType, IR.FloatType, IR.Variable] do
     Transpiler.Primitives.transpile_primitive(ir)
+  end
+
+  def transpile_hologram_ir!(%IR.MatchPlaceholder{} = ir) do
+    Transpiler.Patterns.transpile_pattern(ir)
   end
 
   def transpile_hologram_ir!(unsupported_ir) do

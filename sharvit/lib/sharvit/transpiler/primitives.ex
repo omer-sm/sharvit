@@ -15,6 +15,10 @@ defmodule Sharvit.Transpiler.Primitives do
     Builder.literal(boolean_value == :true)
   end
 
+  def transpile_primitive(%IR.AtomType{value: :nil}) do
+    Builder.literal(nil)
+  end
+
   def transpile_primitive(%IR.AtomType{value: value}) do
     # TODO: make module names not symbols
     Builder.member_expression(Builder.identifier("Symbol"), Builder.identifier("for"))

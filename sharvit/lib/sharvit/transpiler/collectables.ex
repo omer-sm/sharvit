@@ -11,7 +11,9 @@ defmodule Sharvit.Transpiler.Collectables do
     Builder.object_expression(
       Enum.map(data, fn {key, val} ->
         Builder.property(
-          Transpiler.transpile_hologram_ir!(key),
+          Builder.array_expression([
+            Transpiler.transpile_hologram_ir!(key)
+          ]),
           Transpiler.transpile_hologram_ir!(val)
         )
       end)

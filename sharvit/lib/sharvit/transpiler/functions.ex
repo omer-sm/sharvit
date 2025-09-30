@@ -20,4 +20,7 @@ defmodule Sharvit.Transpiler.Functions do
     Builder.call_expression(callee, Enum.map(args, &Transpiler.transpile_hologram_ir!/1))
   end
 
+
+  @spec transpile_anonymous_function(ir :: IR.AnonymousFunctionType)
+
 end

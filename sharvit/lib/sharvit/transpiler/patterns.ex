@@ -3,6 +3,18 @@ defmodule Sharvit.Transpiler.Patterns do
   alias Hologram.Compiler.IR
   alias Sharvit.Transpiler
 
+  # TODO: add cons + pin operators
+  @type patternable ::
+          IR.Variable
+          | IR.AtomType
+          | IR.StringType
+          | IR.IntegerType
+          | IR.FloatType
+          | IR.ListType
+          | IR.MapType
+          | IR.TupleType
+          | IR.MatchPlaceholder
+
   @spec transpile_pattern(ir :: IR.MatchPlaceholder.t()) :: ESTree.Node.t() | ESTree.operator()
   def transpile_pattern(ir)
 
@@ -10,9 +22,48 @@ defmodule Sharvit.Transpiler.Patterns do
     Builder.member_expression(Builder.identifier("sharvitPatterns"), Builder.identifier("any"))
   end
 
-  def transpile_as_pattern_match(pattern, value) do
+  @spec transpile_and_sterilize_pattern(ir :: patternable(), target :: :variables | :constants) ::
+          ESTree.Node.t() | nil
+  def transpile_and_sterilize_pattern(ir, target)
+
+  def transpile_and_sterilize_pattern(%IR.Variable{} = ir, target) do
+    if target == :variables,
+      do: Transpiler.transpile_hologram_ir!(%IR.MatchPlaceholder{}),
+      else: Transpiler.transpile_hologram_ir!(ir)
+  end
+
+  def transpile_and_sterilize_pattern(%ir_struct{} = ir, target)
+      when ir_struct in [IR.AtomType, IR.StringType, IR.IntegerType, IR.FloatType] do
+    if target == :constants, do: nil, else: Transpiler.transpile_hologram_ir!(ir)
+  end
+
+  def transpile_and_sterilize_pattern(%IR.MatchPlaceholder{} = ir, target) do
+    if target == :variables, do: nil, else: Transpiler.transpile_hologram_ir!(ir)
+  end
+
+  def transpile_and_sterilize_pattern(%ir_struct{data: data}, target)
+      when ir_struct in [IR.ListType, IR.TupleType] do
+    data
+    |> Enum.map(&transpile_and_sterilize_pattern(&1, target))
+    |> Builder.array_expression()
+  end
+
+  def transpile_and_sterilize_pattern(%IR.MapType{data: data}, target) do
+    data
+    |> Enum.map(
+      &Builder.property(
+        Builder.array_expression([Transpiler.transpile_hologram_ir!(elem(&1, 0))]),
+        transpile_and_sterilize_pattern(elem(&1, 1), target)
+      )
+    )
+    |> Builder.object_expression()
+  end
+
+  @spec transpile_as_pattern_verify(pattern :: patternable(), value :: IR.t()) ::
+          ESTree.CallExpression.t()
+  def transpile_as_pattern_verify(pattern, value) do
     Builder.call_expression(Builder.identifier("verifyPatternMatch"), [
-      Transpiler.transpile_hologram_ir!(pattern),
+      transpile_and_sterilize_pattern(pattern, :variables),
       Transpiler.transpile_hologram_ir!(value)
     ])
   end

@@ -3,7 +3,7 @@ const sharvitPatterns = {
 };
 
 function doesMatchPattern(pattern, value) {
-  if (pattern === sharvitPatterns.any) {
+  if (pattern === sharvitPatterns.any || value === sharvitPatterns.any) {
     return true;
   }
 
@@ -38,4 +38,12 @@ function doesMatchPattern(pattern, value) {
   }
 
   return false;
+}
+
+function verifyPatternMatch(pattern, value) {
+  if (pattern !== null && !doesMatchPattern(pattern, value)) {
+    throw new Error(`No match for value ${value} in pattern ${pattern}`)
+  }
+
+  return value;
 }

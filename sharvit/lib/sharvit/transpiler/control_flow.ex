@@ -41,20 +41,17 @@ defmodule Sharvit.Transpiler.ControlFlow do
     |> wrap_in_iife()
   end
 
-  # TODO: make it match patterns
   def transpile_control_flow(%IR.Case{condition: condition, clauses: clauses}) do
-    Builder.switch_statement(
-      Transpiler.transpile_hologram_ir!(condition),
-      Enum.map(clauses, &Transpiler.transpile_hologram_ir!/1)
-    )
-    |> wrap_in_iife()
+    clauses
+    |> Enum.map(&Transpiler.transpile_hologram_ir!/1)
+    |> Builder.block_statement()
+    |> wrap_in_iife([Transpiler.transpile_hologram_ir!(condition)])
   end
 
-  def transpile_control_flow(%IR.Clause{match: match_pattern, body: body}) do
-    Builder.switch_case(
-      Transpiler.transpile_hologram_ir!(match_pattern),
-      transpile_expressions_and_return_last(body).body
-    )
+  def transpile_control_flow(%IR.Clause{} = clause_ir) do
+    clause_ir
+    |> Transpiler.Clause.to_clause()
+    |> Transpiler.Clause.transpile_clause()
   end
 
   def transpile_control_flow(%IR.Cond{clauses: clauses}) do
@@ -88,10 +85,14 @@ defmodule Sharvit.Transpiler.ControlFlow do
   make the last (/only) expression a return statement.
   Given a block IR, it will return an equivalent ESTree block with the last expression
   in the block as the return value.
+  Given an empty list, it will return a "return undefined" statement.
   """
   @spec transpile_expressions_and_return_last(expression_ir :: IR.t() | list(IR.t())) ::
           ESTree.Node.t()
   def transpile_expressions_and_return_last(expression_ir)
+
+  def transpile_expressions_and_return_last([]),
+    do: Builder.return_statement(Builder.identifier("undefined"))
 
   def transpile_expressions_and_return_last(%IR.Block{expressions: expressions}) do
     expressions_transpiled = Enum.map(expressions, &Transpiler.transpile_hologram_ir!/1)
@@ -118,20 +119,16 @@ defmodule Sharvit.Transpiler.ControlFlow do
   @doc """
   Wraps an ESTree statement in an IIFE.
   """
-  @spec wrap_in_iife(statement :: ESTree.Node.t()) :: ESTree.ExpressionStatement.t()
-  def wrap_in_iife(statement)
+  @spec wrap_in_iife(statement :: ESTree.Node.t(), arguments :: list(ESTree.Node.t())) :: ESTree.ExpressionStatement.t()
+  def wrap_in_iife(statement, arguments \\ [])
 
-  def wrap_in_iife(%ESTree.BlockStatement{} = statement) do
+  def wrap_in_iife(%ESTree.BlockStatement{} = statement, arguments) do
     Builder.function_expression([], [], statement)
-    |> Builder.call_expression([])
+    |> Builder.call_expression(arguments)
     |> Builder.expression_statement()
   end
 
-  def wrap_in_iife(statement) do
-    iife_body = Builder.block_statement([statement])
-
-    Builder.function_expression([], [], iife_body)
-    |> Builder.call_expression([])
-    |> Builder.expression_statement()
+  def wrap_in_iife(statement, arguments) do
+    wrap_in_iife(Builder.block_statement([statement]), arguments)
   end
 end

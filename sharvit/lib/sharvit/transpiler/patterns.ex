@@ -5,15 +5,15 @@ defmodule Sharvit.Transpiler.Patterns do
 
   # TODO: add cons + pin operators
   @type patternable ::
-          IR.Variable
-          | IR.AtomType
-          | IR.StringType
-          | IR.IntegerType
-          | IR.FloatType
-          | IR.ListType
-          | IR.MapType
-          | IR.TupleType
-          | IR.MatchPlaceholder
+          IR.Variable.t()
+          | IR.AtomType.t()
+          | IR.StringType.t()
+          | IR.IntegerType.t()
+          | IR.FloatType.t()
+          | IR.ListType.t()
+          | IR.MapType.t()
+          | IR.TupleType.t()
+          | IR.MatchPlaceholder.t()
 
   @spec transpile_pattern(ir :: IR.MatchPlaceholder.t()) :: ESTree.Node.t() | ESTree.operator()
   def transpile_pattern(ir)
@@ -38,7 +38,7 @@ defmodule Sharvit.Transpiler.Patterns do
   end
 
   def transpile_and_sterilize_pattern(%IR.MatchPlaceholder{} = ir, target) do
-    if target == :variables, do: nil, else: Transpiler.transpile_hologram_ir!(ir)
+    if target == :constants, do: nil, else: Transpiler.transpile_hologram_ir!(ir)
   end
 
   def transpile_and_sterilize_pattern(%ir_struct{data: data}, target)
@@ -49,7 +49,12 @@ defmodule Sharvit.Transpiler.Patterns do
   end
 
   def transpile_and_sterilize_pattern(%IR.MapType{data: data}, target) do
-    data
+    map_data =
+      if target == :variables,
+        do: data,
+        else: Enum.filter(data, &match?(%IR.Variable{}, elem(&1, 1)))
+
+    map_data
     |> Enum.map(
       &Builder.property(
         Builder.array_expression([Transpiler.transpile_hologram_ir!(elem(&1, 0))]),

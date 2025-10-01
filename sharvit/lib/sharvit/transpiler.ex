@@ -4,7 +4,7 @@ defmodule Sharvit.Transpiler do
 
   @binary_operators_functions [:+, :-, :*, :/, :==, :===, :|>]
 
-  @spec transpile_hologram_ir!(ir :: IR.t()) :: ESTree.operator() | ESTree.Node.t()
+  @spec transpile_hologram_ir!(ir :: IR.t()) :: ESTree.Node.t()
   def transpile_hologram_ir!(ir)
 
   def transpile_hologram_ir!(%ir_struct{} = ir)
@@ -45,6 +45,14 @@ defmodule Sharvit.Transpiler do
 
   def transpile_hologram_ir!(%IR.MatchPlaceholder{} = ir) do
     Transpiler.Patterns.transpile_pattern(ir)
+  end
+
+  def transpile_hologram_ir!(%IR.FunctionClause{} = ir) do
+    Transpiler.Functions.transpile_function_clause(ir)
+  end
+
+  def transpile_hologram_ir!(%IR.AnonymousFunctionType{} = ir) do
+    Transpiler.Functions.transpile_anonymous_function(ir)
   end
 
   def transpile_hologram_ir!(unsupported_ir) do

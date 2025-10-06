@@ -396,10 +396,14 @@ defmodule Hologram.Compiler.IR do
   @doc """
   Aggregates function clauses from a module definition.
 
+  ## Note
+
+  Modified to return only function name instead of {function_name, arity}.
+
   ## Returns
 
   A list, where each item is in the format:
-  {{function_name, arity}, {visibility, [clause_1, clause_2, ...]}}
+  {function_name, {visibility, [clause_1, clause_2, ...]}}
 
   ## Example
 

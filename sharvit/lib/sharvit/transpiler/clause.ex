@@ -4,11 +4,10 @@ defmodule Sharvit.Transpiler.Clause do
   alias Sharvit.Transpiler
   alias Sharvit.Transpiler.Patterns
 
-  @enforce_keys [:params, :patterns, :guards, :body]
-  defstruct [:params, :patterns, :guards, :body]
+  @enforce_keys [:patterns, :guards, :body]
+  defstruct [:patterns, :guards, :body]
 
   @type t :: %__MODULE__{
-          params: list(IR.Variable.t() | IR.MatchPlaceholder.t()),
           patterns: list(Patterns.patternable()),
           guards: list(IR.t()),
           body: IR.Block.t()
@@ -18,13 +17,6 @@ defmodule Sharvit.Transpiler.Clause do
   def to_clause(clause_ir)
 
   def to_clause(%IR.FunctionClause{params: params, guards: guards, body: body}) do
-    clause_params =
-      Enum.map(params, fn
-        %IR.Variable{} = param -> param
-        %IR.MatchOperator{right: right} -> right
-        _ -> %IR.MatchPlaceholder{}
-      end)
-
     clause_patterns =
       Enum.map(params, fn
         %IR.MatchOperator{left: left} -> left
@@ -32,21 +24,7 @@ defmodule Sharvit.Transpiler.Clause do
       end)
 
     %Transpiler.Clause{
-      params: clause_params,
       patterns: clause_patterns,
-      guards: guards,
-      body: body
-    }
-  end
-
-  def to_clause(%IR.Clause{
-        match: %IR.MatchOperator{left: pattern, right: param},
-        guards: guards,
-        body: body
-      }) do
-    %Transpiler.Clause{
-      params: [param],
-      patterns: [pattern],
       guards: guards,
       body: body
     }
@@ -54,7 +32,6 @@ defmodule Sharvit.Transpiler.Clause do
 
   def to_clause(%IR.Clause{match: pattern, guards: guards, body: body}) do
     %Transpiler.Clause{
-      params: [],
       patterns: [pattern],
       guards: guards,
       body: body
@@ -63,29 +40,37 @@ defmodule Sharvit.Transpiler.Clause do
 
   @spec transpile_clause(clause :: Transpiler.Clause.t()) :: ESTree.IfStatement.t()
   def transpile_clause(%Transpiler.Clause{
-        params: params,
         patterns: patterns,
         guards: guards,
         body: %IR.Block{expressions: expressions}
       }) do
-    clause_test = transpile_clause_test(patterns, guards, params)
+    clause_test = transpile_clause_test(patterns, guards)
 
+    variables_sterilized =
+      Patterns.transpile_and_sterilize_pattern(%IR.TupleType{data: patterns}, :constants)
+      |> IO.inspect()
+
+    # TODO: improve empty detection
     variable_declaration =
-      if match?([], params),
-        do: nil,
-        else:
-          Builder.variable_declaration(
-            [
-              Builder.variable_declarator(
-                Patterns.transpile_and_sterilize_pattern(%IR.TupleType{data: params}, :constants),
-                Builder.identifier("arguments")
-              )
-            ],
-            :let
-          )
+      if match?(%ESTree.ArrayExpression{elements: [nil]}, variables_sterilized) ||
+           match?(%ESTree.ArrayExpression{elements: []}, variables_sterilized),
+         do: nil,
+         else:
+           Builder.variable_declaration(
+             [
+               Builder.variable_declarator(
+                 Patterns.transpile_and_sterilize_pattern(
+                   %IR.TupleType{data: patterns},
+                   :constants
+                 ),
+                 Builder.identifier("arguments")
+               )
+             ],
+             :let
+           )
 
     expressions_transpiled =
-      Transpiler.ControlFlow.transpile_expressions_and_return_last(expressions)
+      Transpiler.Blocks.transpile_expressions_and_return_last(expressions)
       |> then(fn
         %ESTree.BlockStatement{body: body} -> body
         statement_transpiled -> [statement_transpiled]
@@ -103,9 +88,9 @@ defmodule Sharvit.Transpiler.Clause do
     Builder.if_statement(clause_test, body_transpiled)
   end
 
-  defp transpile_clause_test(patterns, guards, params)
+  defp transpile_clause_test(patterns, guards)
 
-  defp transpile_clause_test(patterns, [], _params) do
+  defp transpile_clause_test(patterns, []) do
     Builder.call_expression(
       Builder.identifier("doesMatchPattern"),
       [
@@ -117,13 +102,13 @@ defmodule Sharvit.Transpiler.Clause do
     )
   end
 
-  defp transpile_clause_test(patterns, guards, params) do
-    does_match_test = transpile_clause_test(patterns, [], nil)
+  defp transpile_clause_test(patterns, guards) do
+    does_match_test = transpile_clause_test(patterns, [])
 
     guards_test =
       Builder.call_expression(
         Builder.arrow_function_expression(
-          Enum.map(params, &Patterns.transpile_and_sterilize_pattern(&1, :constants)),
+          Enum.map(patterns, &Patterns.transpile_and_sterilize_pattern(&1, :constants)),
           [],
           transpile_guards(guards),
           false,

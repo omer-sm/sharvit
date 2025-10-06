@@ -2,18 +2,22 @@ defmodule Sharvit.Transpiler do
   alias Hologram.Compiler.IR
   alias Sharvit.Transpiler
 
-  @binary_operators_functions [:+, :-, :*, :/, :==, :===, :|>]
+  @binary_operators_functions [:+, :-, :*, :/, :==, :===, :|>, :"=:=", :>=, :<=, :<, :>, :"/=", :"=/="]
 
   @spec transpile_hologram_ir!(ir :: IR.t()) :: ESTree.Node.t()
   def transpile_hologram_ir!(ir)
 
   def transpile_hologram_ir!(%ir_struct{} = ir)
-      when ir_struct in [IR.Block, IR.Case, IR.Clause, IR.Cond] do
+      when ir_struct in [IR.Case, IR.Clause, IR.Cond] do
     Transpiler.ControlFlow.transpile_control_flow(ir)
   end
 
+  def transpile_hologram_ir!(%IR.Block{} = ir) do
+    Transpiler.Blocks.transpile_block(ir)
+  end
+
   def transpile_hologram_ir!(%ir_struct{} = ir)
-      when ir_struct in [IR.MatchOperator, IR.ConsOperator] do
+      when ir_struct in [IR.MatchOperator, IR.ConsOperator, IR.DotOperator] do
     Transpiler.Operators.transpile_operator(ir)
   end
 
@@ -26,20 +30,27 @@ defmodule Sharvit.Transpiler do
     Transpiler.ControlFlow.transpile_control_flow(ir)
   end
 
-  def transpile_hologram_ir!(%IR.LocalFunctionCall{} = ir) do
+  def transpile_hologram_ir!(%IR.LocalFunctionCall{function: :@} = ir) do
+    Transpiler.Modules.transpile_module_attribute(ir)
+  end
+
+  def transpile_hologram_ir!(%IR.RemoteFunctionCall{function: binary_operator} = ir)
+    when binary_operator in @binary_operators_functions do
+      Transpiler.Operators.transpile_operator(ir)
+    end
+
+  def transpile_hologram_ir!(%ir_struct{} = ir)
+      when ir_struct in [IR.LocalFunctionCall, IR.RemoteFunctionCall, IR.AnonymousFunctionCall] do
     Transpiler.Functions.transpile_function_call(ir)
   end
 
-  def transpile_hologram_ir!(%IR.RemoteFunctionCall{} = ir) do
-    Transpiler.Functions.transpile_function_call(ir)
-  end
-
-  def transpile_hologram_ir!(%ir_struct{} = ir) when ir_struct in [IR.MapType, IR.ListType, IR.TupleType] do
+  def transpile_hologram_ir!(%ir_struct{} = ir)
+      when ir_struct in [IR.MapType, IR.ListType, IR.TupleType] do
     Transpiler.Collectables.transpile_collectable(ir)
   end
 
   def transpile_hologram_ir!(%ir_struct{} = ir)
-      when ir_struct in [IR.AtomType, IR.StringType, IR.IntegerType, IR.FloatType, IR.Variable] do
+      when ir_struct in [IR.AtomType, IR.StringType, IR.IntegerType, IR.FloatType, IR.Variable, IR.BitstringType, IR.BitstringSegment] do
     Transpiler.Primitives.transpile_primitive(ir)
   end
 
@@ -53,6 +64,18 @@ defmodule Sharvit.Transpiler do
 
   def transpile_hologram_ir!(%IR.AnonymousFunctionType{} = ir) do
     Transpiler.Functions.transpile_anonymous_function(ir)
+  end
+
+  def transpile_hologram_ir!(%IR.ModuleAttributeOperator{} = ir) do
+    Transpiler.Modules.transpile_module_attribute(ir)
+  end
+
+  def transpile_hologram_ir!(%IR.ModuleDefinition{} = ir) do
+    Transpiler.Modules.transpile_module(ir)
+  end
+
+  def transpile_hologram_ir!(%IR.IgnoredExpression{}) do
+    ESTree.Tools.Builder.empty_expression()
   end
 
   def transpile_hologram_ir!(unsupported_ir) do

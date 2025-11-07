@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sharvit Web Demo</title>
+    <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;max-width:800px;margin:40px auto;padding:12px;background:#1e2027;color:rgb(227, 227, 227);}
+    .card{border:1px solid #ddd;padding:16px;border-radius:8px;margin-bottom:12px}
+    .row{display:flex;gap:8px;align-items:center}
+    button{padding:8px 10px;border-radius:6px;border:1px solid #888;background:#f6f6f6;cursor:pointer}
+    button:active{transform:translateY(1px)}
+    pre{background:#111;color:#eee;padding:10px;border-radius:6px;overflow:auto}
+    .muted{color:#666;font-size:0.9em}
+  </style>
+  </head>
+  <body>
+    <h1>DOM Methods demo</h1>
+    <p class="muted">Shows <code>getElementById</code>,
+      <code>addEventListener</code>, <code>setAttribute</code>,
+      <code>hasAttribute</code>, <code>getAttribute</code> and
+      <code>element.remove()</code>.</p>
+
+    <div id="card" class="card">
+      <h2 id="title">Hello — click the buttons</h2>
+      <p id="desc">This paragraph will be manipulated by the demo controls
+        below.</p>
+      <div class="row" style="margin-top:8px">
+        <button id="btnToggleAttr">Toggle data-highlight</button>
+        <button id="btnReadAttr">Read data-highlight</button>
+        <button id="btnSetAttr">Set data-author</button>
+        <button id="btnRemoveDesc">Remove paragraph</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>Console output</strong>
+      <pre id="log">(actions will appear here)</pre>
+    </div>
+
+    <script>
+    // grab elements using getElementById
+    const titleEl = document.getElementById('title');
+    const descEl = document.getElementById('desc');
+    const btnToggleAttr = document.getElementById('btnToggleAttr');
+    const btnReadAttr = document.getElementById('btnReadAttr');
+    const btnSetAttr = document.getElementById('btnSetAttr');
+    const btnRemoveDesc = document.getElementById('btnRemoveDesc');
+    const logEl = document.getElementById('log');
+
+    function log(...args){
+      // append message to the tiny console
+      const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+      logEl.textContent += '\n' + msg;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(...args);
+    }
+
+    // addEventListener usage
+    btnToggleAttr.addEventListener('click', () => {
+      // if desc has attribute `data-highlight`, remove it; otherwise set it
+      if (descEl.hasAttribute('data-highlight')) {
+        descEl.removeAttribute('data-highlight');
+        descEl.style.background = '';
+        log('Removed attribute: data-highlight');
+      } else {
+        descEl.setAttribute('data-highlight', 'true');
+        descEl.style.background = '#fff8c644';
+        log('Set attribute: data-highlight=true');
+      }
+      // show current attribute state
+      log('hasAttribute?', descEl.hasAttribute('data-highlight'));
+    });
+
+    btnReadAttr.addEventListener('click', () => {
+      // show whether attribute exists and its value
+      const has = descEl.hasAttribute('data-highlight');
+      const val = has ? descEl.getAttribute('data-highlight') : null;
+      log('hasAttribute(data-highlight):', has, 'value:', val);
+      // also show an example of reading an attribute from the title
+      const id = titleEl.getAttribute('id');
+      log('title id is', id);
+    });
+
+    btnSetAttr.addEventListener('click', () => {
+      // demonstrate setAttribute overwriting previous values
+      const current = descEl.getAttribute('data-author');
+      const next = current ? current + ', +You' : 'You';
+      descEl.setAttribute('data-author', next);
+      log('setAttribute data-author ->', next);
+    });
+
+    btnRemoveDesc.addEventListener('click', () => {
+      // demonstrate element.remove() — removes the element from DOM
+      if (descEl) {
+        descEl.remove();
+        log('desc element removed from DOM');
+        // disable this button (accessed via ID) so user can't click twice
+        btnRemoveDesc.setAttribute('disabled', '');
+      } else {
+        log('desc element already gone');
+      }
+    });
+
+    // small interactive nicety: clicking the title toggles a CSS attribute
+    titleEl.addEventListener('click', () => {
+      // toggle an attribute on the card container
+      const card = document.getElementById('card');
+      if (card.hasAttribute('data-active')) {
+        card.removeAttribute('data-active');
+        card.style.borderColor = '#ddd';
+        log('card data-active removed');
+      } else {
+        card.setAttribute('data-active', '1');
+        card.style.borderColor = '#7aa';
+        log('card data-active set');
+      }
+    });
+
+    // initial log lines
+    log('Demo ready — try the buttons.');
+    log('Elements available:', {title: titleEl.id, desc: descEl ? descEl.id : null});
+  </script>
+  </body>
+</html>

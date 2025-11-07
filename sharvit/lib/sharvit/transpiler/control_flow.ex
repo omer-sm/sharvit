@@ -42,12 +42,12 @@ defmodule Sharvit.Transpiler.ControlFlow do
           %IR.Clause{
             match: %IR.AtomType{value: false},
             guards: [],
-            body: do_block_ir
+            body: else_block_ir
           },
           %Hologram.Compiler.IR.Clause{
             match: %Hologram.Compiler.IR.AtomType{value: true},
             guards: [],
-            body: else_block_ir
+            body: do_block_ir
           }
         ]
       }) do
@@ -109,7 +109,7 @@ defmodule Sharvit.Transpiler.ControlFlow do
   def wrap_in_iife(statement, arguments \\ [])
 
   def wrap_in_iife(%ESTree.BlockStatement{} = statement, arguments) do
-    Builder.function_expression([], [], statement)
+    Builder.arrow_function_expression([Builder.rest_element(Builder.identifier("args"))], [], statement)
     |> Builder.call_expression(arguments)
   end
 

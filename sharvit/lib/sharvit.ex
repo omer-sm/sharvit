@@ -39,7 +39,7 @@ defmodule Sharvit do
     |> tap(&(
       if Sharvit.Config.ir_debug_mode() do
         {:ok, file} = File.open("out/#{inspect(module)}_ir.txt", [:write])
-        IO.inspect(file, &1, label: "#{inspect(module)}")
+        IO.inspect(file, &1, [label: "#{inspect(module)}", limit: :infinity])
       end
     ))
     |> Transpiler.transpile_hologram_ir!()

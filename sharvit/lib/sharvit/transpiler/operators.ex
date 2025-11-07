@@ -15,6 +15,7 @@ defmodule Sharvit.Transpiler.Operators do
             | IR.DotOperator.t()
             | IR.LocalFunctionCall.t()
             | IR.RemoteFunctionCall.t()
+            | IR.PinOperator.t()
         ) ::
           ESTree.Node.t()
   def transpile_operator(ir)
@@ -81,6 +82,18 @@ defmodule Sharvit.Transpiler.Operators do
       when binary_operator in @accepted_binary_operators do
     Builder.binary_expression(
       binary_operator,
+      Transpiler.transpile_hologram_ir!(left),
+      Transpiler.transpile_hologram_ir!(right)
+    )
+  end
+
+  def transpile_operator(%IR.RemoteFunctionCall{
+        module: %IR.AtomType{value: :erlang},
+        function: :orelse,
+        args: [left, right]
+      }) do
+    Builder.binary_expression(
+      :||,
       Transpiler.transpile_hologram_ir!(left),
       Transpiler.transpile_hologram_ir!(right)
     )
@@ -197,6 +210,11 @@ defmodule Sharvit.Transpiler.Operators do
       Transpiler.transpile_hologram_ir!(right),
       true
     )
+  end
+
+  # For map keys
+  def transpile_operator(%IR.PinOperator{variable: pinned_variable}) do
+    Transpiler.transpile_hologram_ir!(pinned_variable)
   end
 
   @spec transpile_and_flatten_cons(

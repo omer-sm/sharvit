@@ -14,54 +14,62 @@ defmodule Sharvit.Transpiler.Modules do
       ) do
     class_name_identifier = Builder.identifier(Atom.to_string(module_name))
 
-    Builder.variable_declaration(
-      [
-        Builder.variable_declarator(
-          class_name_identifier,
-          Transpiler.ControlFlow.wrap_in_iife(
-            Builder.block_statement(
-              (Enum.reject(
-                 body_expressions,
-                 fn
-                   %IR.FunctionDefinition{} ->
-                     true
+    if Sharvit.Config.code_mode() === :compiled do
+      Builder.class_declaration(class_name_identifier, transpile_module_as_class_body(ir))
+    else
+      Builder.variable_declaration(
+        [
+          Builder.variable_declarator(
+            class_name_identifier,
+            Transpiler.ControlFlow.wrap_in_iife(
+              Builder.block_statement(
+                (Enum.reject(
+                   body_expressions,
+                   fn
+                     %IR.FunctionDefinition{} ->
+                       true
 
-                   %IR.ModuleAttributeOperator{} ->
-                     true
+                     %IR.ModuleAttributeOperator{} ->
+                       true
 
-                   %IR.LocalFunctionCall{
-                     function: :@,
-                     args: [%IR.LocalFunctionCall{function: module_attr_name}]
-                   }
-                   when module_attr_name in @ignored_module_attributes ->
-                     true
+                     %IR.LocalFunctionCall{
+                       function: :@,
+                       args: [%IR.LocalFunctionCall{function: module_attr_name}]
+                     }
+                     when module_attr_name in @ignored_module_attributes ->
+                       true
 
-                   _ ->
-                     false
-                 end
-               )
-               |> Enum.map(&Transpiler.transpile_hologram_ir!/1)) ++
-                [
-                  Builder.return_statement(transpile_module_as_class_expression(ir))
-                ]
+                     _ ->
+                       false
+                   end
+                 )
+                 |> Enum.map(&Transpiler.transpile_hologram_ir!/1)) ++
+                  [
+                    Builder.return_statement(
+                      Builder.class_expression(transpile_module_as_class_body(ir))
+                    )
+                  ]
+              )
             )
           )
-        )
-      ],
-      :const
-    )
+        ],
+        :const
+      )
+    end
   end
 
-  @spec transpile_module_as_class_expression(ir :: IR.ModuleDefinition.t()) ::
-          ESTree.ClassExpression.t()
-  def transpile_module_as_class_expression(%IR.ModuleDefinition{} = ir) do
+  @spec transpile_module_as_class_body(ir :: IR.ModuleDefinition.t()) ::
+          ESTree.ClassBody.t()
+  def transpile_module_as_class_body(%IR.ModuleDefinition{} = ir) do
     method_definitions =
       IR.aggregate_module_funs(ir)
       |> Enum.map(fn {function_name, {_visibility, clauses}} ->
         Builder.method_definition(
-          Builder.identifier(Transpiler.Primitives.escape_identifier(Atom.to_string(function_name))),
+          Builder.identifier(
+            Transpiler.Primitives.escape_identifier(Atom.to_string(function_name))
+          ),
           Builder.function_expression(
-            [],
+            [Builder.rest_element(Builder.identifier("args"))],
             [],
             Builder.block_statement(
               Enum.map(clauses, &Transpiler.Functions.transpile_function_clause/1) ++
@@ -75,7 +83,7 @@ defmodule Sharvit.Transpiler.Modules do
                           Builder.literal("No function clause matching in #{function_name}("),
                           Builder.binary_expression(
                             :+,
-                            Builder.identifier("arguments"),
+                            Builder.identifier("args"),
                             Builder.literal(")")
                           )
                         )
@@ -91,7 +99,7 @@ defmodule Sharvit.Transpiler.Modules do
         )
       end)
 
-    Builder.class_expression(Builder.class_body(method_definitions))
+    Builder.class_body(method_definitions)
   end
 
   @doc """
@@ -110,7 +118,9 @@ defmodule Sharvit.Transpiler.Modules do
     Builder.variable_declaration(
       [
         Builder.variable_declarator(
-          Builder.identifier("__moduleAttribute_#{Transpiler.Primitives.escape_identifier(attr_name)}"),
+          Builder.identifier(
+            "__moduleAttribute_#{Transpiler.Primitives.escape_identifier(attr_name)}"
+          ),
           Transpiler.transpile_hologram_ir!(attr_value)
         )
       ],

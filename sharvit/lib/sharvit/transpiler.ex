@@ -2,7 +2,7 @@ defmodule Sharvit.Transpiler do
   alias Hologram.Compiler.IR
   alias Sharvit.Transpiler
 
-  @binary_operators_functions [:+, :-, :*, :/, :==, :===, :|>, :"=:=", :>=, :<=, :<, :>, :"/=", :"=/="]
+  @binary_operators_functions [:+, :-, :*, :/, :==, :===, :|>, :"=:=", :>=, :<=, :<, :>, :"/=", :"=/=", :orelse]
 
   @spec transpile_hologram_ir!(ir :: IR.t()) :: ESTree.Node.t()
   def transpile_hologram_ir!(ir)
@@ -17,7 +17,7 @@ defmodule Sharvit.Transpiler do
   end
 
   def transpile_hologram_ir!(%ir_struct{} = ir)
-      when ir_struct in [IR.MatchOperator, IR.ConsOperator, IR.DotOperator] do
+      when ir_struct in [IR.MatchOperator, IR.ConsOperator, IR.DotOperator, IR.PinOperator] do
     Transpiler.Operators.transpile_operator(ir)
   end
 

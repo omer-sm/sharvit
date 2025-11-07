@@ -48,7 +48,6 @@ defmodule Sharvit.Transpiler.Clause do
 
     variables_sterilized =
       Patterns.transpile_and_sterilize_pattern(%IR.TupleType{data: patterns}, :constants)
-      |> IO.inspect()
 
     # TODO: improve empty detection
     variable_declaration =
@@ -63,7 +62,7 @@ defmodule Sharvit.Transpiler.Clause do
                    %IR.TupleType{data: patterns},
                    :constants
                  ),
-                 Builder.identifier("arguments")
+                 Builder.identifier("args")
                )
              ],
              :let
@@ -97,7 +96,7 @@ defmodule Sharvit.Transpiler.Clause do
         Builder.array_expression(
           Enum.map(patterns, &Patterns.transpile_and_sterilize_pattern(&1, :variables))
         ),
-        Builder.identifier("arguments")
+        Builder.identifier("args")
       ]
     )
   end
@@ -115,7 +114,7 @@ defmodule Sharvit.Transpiler.Clause do
           true
         ),
         [
-          Builder.rest_element(Builder.identifier("arguments"))
+          Builder.rest_element(Builder.identifier("args"))
         ]
       )
 

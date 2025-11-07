@@ -57,13 +57,33 @@ defmodule Sharvit.Transpiler.Functions do
   end
 
   @spec transpile_anonymous_function(ir :: IR.AnonymousFunctionType.t()) ::
-          ESTree.FunctionExpression.t()
+          ESTree.ArrowFunctionExpression.t()
 
   def transpile_anonymous_function(%IR.AnonymousFunctionType{clauses: clauses}) do
-    Builder.function_expression(
+    Builder.arrow_function_expression(
+      [Builder.rest_element(Builder.identifier("args"))],
       [],
-      [],
-      Builder.block_statement(Enum.map(clauses, &Transpiler.transpile_hologram_ir!/1))
+      Builder.block_statement(
+        Enum.map(clauses, &Transpiler.transpile_hologram_ir!/1) ++
+          [
+            Builder.throw_statement(
+              Builder.new_expression(
+                Builder.identifier("Error"),
+                [
+                  Builder.binary_expression(
+                    :+,
+                    Builder.literal("No function clause matching in anonymous_function("),
+                    Builder.binary_expression(
+                      :+,
+                      Builder.identifier("args"),
+                      Builder.literal(")")
+                    )
+                  )
+                ]
+              )
+            )
+          ]
+      )
     )
   end
 end

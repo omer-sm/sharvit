@@ -12,8 +12,24 @@ defmodule Sharvit.Transpiler.Blocks do
     expressions
     |> Enum.flat_map(&(collect_extras(&1) ++ [Transpiler.transpile_hologram_ir!(&1)]))
     |> Enum.map(fn
-      %ESTree.VariableDeclarator{} = ir -> Builder.variable_declaration([ir], :const)
-      other -> other
+      %ESTree.VariableDeclarator{} = ir ->
+        Builder.variable_declaration([ir], :const)
+
+        %expr{} = ir
+        when expr in [
+               ESTree.CallExpression,
+               ESTree.ArrowFunctionExpression,
+               ESTree.FunctionExpression,
+               ESTree.Identifier,
+               ESTree.Literal,
+               ESTree.ArrayExpression,
+               ESTree.ArrayPattern,
+               ESTree.ObjectExpression,
+               ESTree.ObjectPattern
+        ] -> Builder.expression_statement(ir)
+
+      other ->
+        other
     end)
     |> Builder.block_statement()
   end
@@ -34,14 +50,29 @@ defmodule Sharvit.Transpiler.Blocks do
       ]
   end
 
-  def collect_extras(%IR.MatchOperator{left: left, right: right}) do
-    collect_extras(right) ++
+  def collect_extras(%IR.MatchOperator{left: left, right: %IR.Variable{} = right}) do
+    collect_extras(left) ++
       [
         Builder.variable_declarator(
-          Transpiler.Patterns.transpile_and_sterilize_pattern(left, :constants),
-          Transpiler.Patterns.transpile_as_pattern_verify(left, right)
+          Transpiler.Primitives.transpile_primitive(right),
+          Transpiler.transpile_hologram_ir!(left)
         )
       ]
+  end
+
+  def collect_extras(%IR.MatchOperator{left: left, right: right}) do
+    left_pattern = Transpiler.Patterns.transpile_and_sterilize_pattern(left, :constants)
+
+    if is_nil(left_pattern),
+      do: collect_extras(right),
+      else:
+        collect_extras(right) ++
+          [
+            Builder.variable_declarator(
+              left_pattern,
+              Transpiler.Patterns.transpile_as_pattern_verify(left, right)
+            )
+          ]
   end
 
   def collect_extras(%IR.LocalFunctionCall{args: args}) do
@@ -97,7 +128,13 @@ defmodule Sharvit.Transpiler.Blocks do
 
   def transpile_expressions_and_return_last(%IR.Block{} = block_ir) do
     expressions_transpiled = transpile_block(block_ir).body
-    last_expression = List.last(expressions_transpiled)
+    last_expression =
+      List.last(expressions_transpiled)
+      |> then(fn
+        %ESTree.ExpressionStatement{expression: expression} -> expression
+        other -> other
+      end)
+
 
     if(Transpiler.ControlFlow.is_returnable?(last_expression)) do
       return_statement = Builder.return_statement(last_expression)

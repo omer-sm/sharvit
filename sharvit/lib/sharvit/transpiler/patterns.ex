@@ -84,6 +84,15 @@ defmodule Sharvit.Transpiler.Patterns do
     )
   end
 
+  def transpile_and_sterilize_pattern(%IR.MatchOperator{left: left, right: %IR.Variable{} = right}, target) do
+    if target == :constants,
+      do: %ESTree.AssignmentPattern{
+        left: Transpiler.transpile_hologram_ir!(right),
+        right: Transpiler.transpile_hologram_ir!(left)
+      },
+      else: Transpiler.transpile_hologram_ir!(left)
+  end
+
   # TODO: check if correct for variables
   def transpile_and_sterilize_pattern(%IR.MatchOperator{left: left, right: right}, target) do
     if target == :constants,

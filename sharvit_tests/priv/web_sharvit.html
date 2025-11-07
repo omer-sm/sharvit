@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sharvit Web Demo</title>
+    <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;max-width:800px;margin:40px auto;padding:12px;background:#1e2027;color:rgb(227, 227, 227);}
+    .card{border:1px solid #ddd;padding:16px;border-radius:8px;margin-bottom:12px}
+    .row{display:flex;gap:8px;align-items:center}
+    button{padding:8px 10px;border-radius:6px;border:1px solid #888;background:#f6f6f6;cursor:pointer}
+    button:active{transform:translateY(1px)}
+    pre{background:#111;color:#eee;padding:10px;border-radius:6px;overflow:auto}
+    .muted{color:#666;font-size:0.9em}
+  </style>
+  </head>
+  <body>
+    <h1>DOM Methods demo</h1>
+    <p class="muted">Shows <code>getElementById</code>,
+      <code>addEventListener</code>, <code>setAttribute</code>,
+      <code>hasAttribute</code>, <code>getAttribute</code> and
+      <code>element.remove()</code>.</p>
+
+    <div id="card" class="card">
+      <h2 id="title">Hello — click the buttons</h2>
+      <p id="desc">This paragraph will be manipulated by the demo controls
+        below.</p>
+      <div class="row" style="margin-top:8px">
+        <button id="btnToggleAttr">Toggle data-highlight</button>
+        <button id="btnReadAttr">Read data-highlight</button>
+        <button id="btnSetAttr">Set data-author</button>
+        <button id="btnRemoveDesc">Remove paragraph</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>Console output</strong>
+      <pre id="log">(actions will appear here)</pre>
+    </div>
+    <script src="web.js"></script>
+    <script>
+      addEventListener('DOMContentLoaded', () => Elixir_SharvitTests_TestModules_WebTest.start());
+    </script>
+  </body>
+</html>
